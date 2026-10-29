@@ -28,9 +28,9 @@ pseudocode, and practice traces. The current sections cover:
 | `string_search.py` | Fill in the four implementation TODOs |
 | `lab_checks.py` | Provided automated checks; do not edit |
 
-- [ ] Part 1: Trace and implement naive search.
-- [ ] Part 2: Trace, implement, and analyze Rabin–Karp.
-- [ ] Part 3: Trace the prefix table and matcher, implement KMP, and analyze its running time.
+- [x] Part 1: Trace and implement naive search.
+- [x] Part 2: Trace, implement, and analyze Rabin–Karp.
+- [x] Part 3: Trace the prefix table and matcher, implement KMP, and analyze its running time.
 
 ### Shared conventions
 
@@ -84,9 +84,13 @@ occurs. Record where $j$ stops and whether you add $s$ to the results.
 | Shift `s` | Text indices checked | Final `j` | Append `s`? |
 |---|---|---|---|
 | 1 | `1` | 0 | No |
-| 2 | TODO | TODO | TODO |
-| 4 | TODO | TODO | TODO |
-| 5 | TODO | TODO | TODO |
+| 2 | `2, 3` | 1 | No |
+| 4 | `4, 5` | 1 | No |
+| 5 | `5, 6, 7` | 3 | Yes |
+
+At shift 2, `T[2] = a` matches `P[0]`, but `T[3] = c` differs from
+`P[1] = b`. At shift 4, `T[4] = a` matches, but `T[5] = a` differs from
+`P[1] = b`. At shift 5, `T[5..7] = "aba"` matches all three characters.
 
 ### 1.2 Implementation
 
@@ -178,6 +182,18 @@ At shift `6`, the hash is `7`; all five characters match, so record `6`.
    text and pattern indices checked before stopping. Is this a match or a
    spurious hit?
 
+**Answer 2.1:**
+
+1. The window moves from `"31415"` to `"14152"`: the digit **3** (`T[6]`)
+   leaves and the digit **2** (`T[11]`) enters.
+   $t = (10 \cdot (7 - 3 \cdot 3) + 2) \bmod 13 = (10 \cdot (-2) + 2) \bmod 13 = -18 \bmod 13 = 8$.
+   The new hash is **8**, which does not equal $p = 7$, so shift 7 is skipped
+   without comparing any characters. (Check: $14152 \bmod 13 = 8$.)
+2. The window at shift 12 is `"67399"`. The first check compares text index
+   **12** (`'6'`) with pattern index **0** (`'3'`). They differ, so the check
+   stops right away. This is a **spurious hit**: the hashes are equal
+   ($67399 \bmod 13 = 7$), but the strings are different.
+
 ### 2.2 Implementation
 
 **TODO 2.2:** Complete `rabin_karp` in the provided `string_search.py` using
@@ -203,11 +219,22 @@ hash comparisons and character checks.
 
 | Case | Build hashes | Search | Total |
 |---|---|---|---|
-| Best | TODO | TODO | TODO |
-| Worst | TODO | TODO | TODO |
+| Best | Θ(m) | Θ(n - m + 1) | Θ(n) |
+| Worst | Θ(m) | Θ((n - m + 1) · m) | Θ((n - m + 1) · m) |
 
 For each case, explain in one sentence how many windows need character checks
 and how many characters are checked in each one.
+
+**Answer 2.3:**
+
+- **Best:** No window's hash equals $p$, so **0** windows need character
+  checks. Each of the $n - m + 1$ windows costs one hash comparison and one
+  O(1) rolling update. With the Θ(m) to build the first hashes, the total is
+  Θ(m + n - m + 1) = Θ(n).
+- **Worst:** Every window is `"aa...a"`, so all **$n - m + 1$** windows hash
+  to $p$, and each one checks all **$m$** characters (they all match). That is
+  Θ((n - m + 1) · m) for the search, which absorbs the Θ(m) build. This is the
+  same as naive search: Θ(nm) when, for example, $m = n/2$.
 
 ### Connection: Searching for several patterns
 
@@ -301,11 +328,23 @@ The first row is worked: `P[2] == P[4]`, so `k` increases to `3`.
 | Index `j` | Starting `k` | Fallbacks | `pi[j]` |
 |---|---|---|---|
 | 4 | 2 | none | 3 |
-| 5 | 3 | TODO | TODO |
-| 6 | 0 | TODO | TODO |
+| 5 | 3 | 3 → 1 → 0 | 0 |
+| 6 | 0 | none | 1 |
 
 Now trace the matcher at `i = 8`, starting with `q = 6`. Which pattern index
 is compared with `T[8]`? What shift is recorded, and what is `q` afterward?
+
+**Answer 3.1:**
+
+- `j = 5`: `P[3] = b` ≠ `P[5] = c`, so `k = pi[2] = 1`. `P[1] = b` ≠ `c`, so
+  `k = pi[0] = 0`. Now `k = 0`, so the loop stops. `P[0] = a` ≠ `c`, so `k`
+  stays 0 and `pi[5] = 0`.
+- `j = 6`: `k = 0`, no fallback. `P[0] = a` == `P[6] = a`, so `k = 1` and
+  `pi[6] = 1`.
+- Full table: `pi = [0, 0, 1, 2, 3, 0, 1]`.
+- Matcher at `i = 8`, `q = 6`: **`P[6]`** (`a`) is compared with `T[8]` (`a`).
+  They match, so `q = 7 = m`, and shift **`8 - 7 + 1 = 2`** is recorded. Then
+  `q = pi[6] = 1`.
 
 ### 3.2 Implementation
 
@@ -330,12 +369,28 @@ Give tight bounds in terms of $n$ and $m$.
 
 | Case | Build `pi` | Search | Total |
 |---|---|---|---|
-| Best | TODO | TODO | TODO |
-| Worst | TODO | TODO | TODO |
+| Best | Θ(m) | Θ(n) | Θ(n) |
+| Worst | Θ(m) | Θ(n) | Θ(n) |
 
 Explain the worst-case bound in a few lines. Across the whole scan, how often
 can `q` increase? How does that limit the number of fallbacks? Use the same
 reasoning for `k` when building `pi`.
+
+**Answer 3.3:** In the best case, `q` stays 0 the whole time: each text
+character gets one comparison with `P[0]`, and no fallbacks happen, so the
+search is Θ(n).
+
+In the worst case, each step of the `for` loop raises `q` by **at most 1**, so
+across the whole scan `q` goes up at most $n$ times. Every fallback
+(`q = pi[q - 1]`, or `q = pi[m - 1]` after a match) makes `q` strictly
+smaller, and `q` never drops below 0. So the total number of fallbacks can't
+be more than the total number of increases, which is at most $n$. Some
+iterations do many fallbacks (for `"aaab"` in `a`×20, each mismatch on `b`
+falls back 3 → 2 → ...), but they are "paid for" by earlier increases. That
+gives Θ(n) total for the search. The same argument works for `k` in
+`compute_prefix_function`: `k` goes up at most once per `j`, so at most
+$m - 1$ times, and each fallback lowers it, so building `pi` is Θ(m). Since
+$m \le n$, the total is Θ(m + n) = Θ(n) in both cases.
 
 ---
 

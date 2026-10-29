@@ -27,11 +27,11 @@ $\text{BF}(v) = \text{height}(v.\text{left}) - \text{height}(v.\text{right})$.
 | `rotation_practice.py` | Implement `balance_factor`, `rotate_left`, `rotate_right`, `rotate_left_right`, `rotate_right_left`, `avl_insert_iterative`, and `avl_insert_recursive`; `print_tree` is provided for debugging |
 | `lab_checks.py` | Provided checks and profiling demonstration; do not edit |
 
-- [ ] Part 1: BST insertion and deletion traces, implementation, and short answers.
-- [ ] Part 2: Imbalance search path trace and violation diagnostics.
-- [ ] Part 3: AVL rotation trace, implementations, and short answer.
-- [ ] Part 4: Iterative and recursive AVL insertion implementations and comparison.
-- [ ] Run both practice files and resolve all failed checks.
+- [x] Part 1: BST insertion and deletion traces, implementation, and short answers.
+- [x] Part 2: Imbalance search path trace and violation diagnostics.
+- [x] Part 3: AVL rotation trace, implementations, and short answer.
+- [x] Part 4: Iterative and recursive AVL insertion implementations and comparison.
+- [x] Run both practice files and resolve all failed checks.
 
 Keep the function names and parameters unchanged. Do not use `sorted` or
 `list.sort` to implement the required functions. The provided checks inspect
@@ -154,11 +154,11 @@ traversal of the tree after insertion. The first two rows are worked.
 |---|---|---|---|
 | 40 | None (Root) | Root | `[40]` |
 | 20 | 40 | Left | `[20, 40]` |
-| 60 | TODO | TODO | TODO |
-| 10 | TODO | TODO | TODO |
-| 30 | TODO | TODO | TODO |
-| 50 | TODO | TODO | TODO |
-| 70 | TODO | TODO | TODO |
+| 60 | 40 | Right | `[20, 40, 60]` |
+| 10 | 20 | Left | `[10, 20, 40, 60]` |
+| 30 | 20 | Right | `[10, 20, 30, 40, 60]` |
+| 50 | 60 | Left | `[10, 20, 30, 40, 50, 60]` |
+| 70 | 60 | Right | `[10, 20, 30, 40, 50, 60, 70]` |
 
 ### 1.2 Trace: Deletion
 
@@ -177,8 +177,11 @@ worked.
 | Target key | Deletion case | Successor key | Node spliced / replaced | In-order traversal afterward |
 |---|---|---|---|---|
 | 10 | 0 children (leaf) | None | 10 | `[20, 30, 40, 50, 60, 70]` |
-| 20 | TODO | TODO | TODO | TODO |
-| 40 | TODO | TODO | TODO | TODO |
+| 20 | 1 child (right child 30) | None | 20 bypassed; 30 moves up to be 40's left child | `[30, 40, 50, 60, 70]` |
+| 40 | 2 children (30 and 60) | 50 | 50 spliced out from under 60 (it is not 40's immediate right child), then 50 replaces 40 as root | `[30, 50, 60, 70]` |
+
+**Answer:** After all three deletions the tree is 50 at the root, 30 as its
+left child, and 60 as its right child with 70 below 60 on the right.
 
 ### 1.3 Implementation
 
@@ -196,8 +199,22 @@ python3 bst_practice.py
 **TODO 1.4A:** In a two-child deletion (Case 3), why is the in-order successor
 guaranteed never to have a left child?
 
+**Answer:** The successor is `tree_minimum(z.right)`, which keeps following
+`left` pointers until there is no left child. If it had a left child, that
+child would have a smaller key in the same subtree, so the successor would not
+be the minimum. It can have a right child, which is why it is spliced out with
+`transplant(tree, y, y.right)`.
+
 **TODO 1.4B:** When deleting the root node of the tree, what special pointer
 updates must take place regarding `tree.root` and `node.parent`?
+
+**Answer:** The root has no parent, so there is no parent child pointer to
+update. Instead, `transplant` sees `u.parent is None` and sets `tree.root` to
+the replacement node. The replacement node's `parent` must be set to `None`
+(transplant copies `u.parent`, which is `None`), so it is recognized as the new
+root. In the two-child case, the successor's `left` (and `right`, if it was
+spliced) pointers and those children's `parent` pointers must also be rewired
+to it. If the tree becomes empty, `tree.root` becomes `None`.
 
 All three basic BST operations (search, insert, delete) run in $O(h)$ time,
 where $h$ is the height of the tree. The iterative implementations require
@@ -229,8 +246,8 @@ visited, in order, and the total number of key comparisons.
 
 | Tree | Search path to key `7` | Total comparisons |
 |---|---|---|
-| Degenerate BST | TODO | TODO |
-| Balanced BST | TODO | TODO |
+| Degenerate BST | `1->2->3->4->5->6->7` | 7 |
+| Balanced BST | `4->6->7` | 3 |
 
 The test suite in `lab_checks.py` demonstrates the difference empirically by
 searching for key `999` among 1,000 keys: 1,000 node comparisons on a
@@ -276,9 +293,18 @@ that repairs it. The first row is worked.
 | Insertion order | Unbalanced node and BF | Heavier child and BF | Signature | Repair |
 |---|---|---|---|---|
 | `[30, 20, 10]` | `30`, +2 | `20`, +1 | LL | `rotate_right(tree, 30)` |
-| `[10, 20, 30]` | TODO | TODO | TODO | TODO |
-| `[30, 10, 20]` | TODO | TODO | TODO | TODO |
-| `[10, 30, 20]` | TODO | TODO | TODO | TODO |
+| `[10, 20, 30]` | `10`, -2 | `20`, -1 | RR | `rotate_left(tree, 10)` |
+| `[30, 10, 20]` | `30`, +2 | `10`, -1 | LR | `rotate_left_right(tree, 30)` (`rotate_left(tree, 10)` then `rotate_right(tree, 30)`) |
+| `[10, 30, 20]` | `10`, -2 | `30`, +1 | RL | `rotate_right_left(tree, 10)` (`rotate_right(tree, 30)` then `rotate_left(tree, 10)`) |
+
+**Answer 2.3 (shapes and heights):**
+
+- `[10, 20, 30]`: right chain 10 → 20 → 30. Heights: 30 = 0, 20 = 1, 10 = 2.
+  BFs: 30 = 0, 20 = -1, 10 = -2.
+- `[30, 10, 20]`: 30 has left child 10, and 10 has right child 20. Heights:
+  20 = 0, 10 = 1, 30 = 2. BFs: 20 = 0, 10 = -1, 30 = +2.
+- `[10, 30, 20]`: 10 has right child 30, and 30 has left child 20. Heights:
+  20 = 0, 30 = 1, 10 = 2. BFs: 20 = 0, 30 = +1, 10 = -2.
 
 AVL trees strictly guarantee height $h < 1.44 \log_2(n + 2)$, ensuring
 $O(\log n)$ worst-case search.
@@ -383,11 +409,16 @@ the root, 20 is its left child, and 10 is 20's left child).
 | Node | Parent after | Left after | Right after | Height after |
 |---|---|---|---|---|
 | 20 | `None` (root) | 10 | 30 | 1 |
-| 10 | TODO | TODO | TODO | TODO |
-| 30 | TODO | TODO | TODO | TODO |
+| 10 | 20 | `None` | `None` | 0 |
+| 30 | 20 | `None` | `None` | 0 |
 
 Confirm that the in-order traversal of the keys remains `[10, 20, 30]` both
 before and after the rotation.
+
+**Answer 3.1:** Before: 30 is the root, 20 is its left child, and 10 is 20's left
+child, so the in-order traversal is 10, 20, 30. After: 20 is the root, with 10
+on the left and 30 on the right, so the traversal is still `[10, 20, 30]`.
+20's right subtree was empty, so `30.left` becomes `None`.
 
 ### 3.2 Implementation
 
@@ -412,6 +443,13 @@ The AVL insertion checks will report `[TODO]` until you finish Part 4.
 
 **TODO 3.3:** When rotating node $x$ to the left around its right child $y$, why
 must the height of $x$ be recalculated before the height of $y$?
+
+**Answer 3.3:** After the rotation, $x$ is $y$'s left child, so $y$'s height is
+computed as 1 + max(height($x$), height($y$.right)). $x$'s stored height is
+still the old value from when it was the higher node (it used to include $y$'s
+subtree). If $y$ were updated first, it would read that stale height for $x$
+and get the wrong answer. Updating $x$ first (bottom-up) means $y$ reads the
+correct child height.
 
 A single rotation modifies a fixed set of pointers and updates 2 height fields,
 taking $\Theta(1)$ time and $\Theta(1)$ auxiliary space. A double rotation
@@ -517,6 +555,26 @@ Insert the keys `[30, 10, 20]` into an empty AVL tree, once with each method.
 3. Which node is the first unbalanced node in each version?
 4. How much extra memory does each version use, in terms of the tree height
    $h$? Explain why they differ.
+
+**Answer 4.2:**
+
+1. **Iterative:** 20 is inserted as 10's right child. The loop starts at
+   20's parent **10** (height becomes 1, BF = -1, fine), then follows
+   `current = current.parent` up to **30** (height 2, BF = +2). Since
+   `20 > 10`, it is LR, so `rotate_left_right(tree, 30)` runs and the loop
+   breaks. It moves upward with the stored `parent` pointers.
+2. **Recursive:** The calls go down 30 → 10 → empty slot, where 20 is created.
+   They finish in reverse order: the call for **10** rebalances first (no
+   rotation), then the call for **30** rebalances, finds BF = +2, does the LR
+   rotation, and returns `node.parent` (20) as the new subtree root. The
+   recursion uses the call stack, not parent pointers, to get back up.
+3. In both versions the first unbalanced node is **30**, and the fix is the
+   same LR double rotation, giving 20 at the root with children 10 and 30.
+4. **Iterative:** O(1) extra memory, just a few local variables, because the
+   path back up is stored in the nodes' `parent` pointers. **Recursive:**
+   O(h) extra memory, because one stack frame stays open for every level
+   between the root and the new node until the calls return. For an AVL tree,
+   h = O(log n).
 
 Both versions run in $O(\log n)$ time because an AVL tree has height
 $O(\log n)$ and each rebalancing step does $O(1)$ work.

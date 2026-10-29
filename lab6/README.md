@@ -29,10 +29,10 @@ any code. You will focus on the three most important building blocks from class:
 | `probing_practice.py` | Implement `linear_probe_insert` and `linear_probe_lookup`; `probe_index` is provided |
 | `lab_checks.py` | Provided automated checks and load-factor demonstration; do not edit |
 
-- [ ] Part 1: Division vs. Multiplication hash trace, 2 short functions, and 1 question.
-- [ ] Part 2: Separate Chaining trace, 2 functions (`chaining_insert`, `chaining_lookup`), and 1 question.
-- [ ] Part 3: Linear Probing trace, 2 functions (`linear_probe_insert`, `linear_probe_lookup`), and 1 question.
-- [ ] Run all three practice files and confirm all checks pass.
+- [x] Part 1: Division vs. Multiplication hash trace, 2 short functions, and 1 question.
+- [x] Part 2: Separate Chaining trace, 2 functions (`chaining_insert`, `chaining_lookup`), and 1 question.
+- [x] Part 3: Linear Probing trace, 2 functions (`linear_probe_insert`, `linear_probe_lookup`), and 1 question.
+- [x] Run all three practice files and confirm all checks pass.
 
 Keep function names and parameters unchanged, and do not use Python's built-in
 `dict` or `set` inside your hash table implementations.
@@ -114,9 +114,9 @@ worked for you.
 | Key $k$ | Binary (8-bit) | Last 3 Bits | Division $k \bmod 8$ ($m = 8$) | Prime Division $k \bmod 7$ ($m = 7$) | Multiplication $\lfloor 8 \cdot ((k \cdot A) \bmod 1) \rfloor$ ($m = 8$) |
 |---|---|---|---|---|---|
 | 19 | `00010 011` | `011` | `19 % 8 = 3` | `19 % 7 = 5` | `floor(8 * 0.7426) = 5` |
-| 51 | `00110 011` | `011` | TODO | TODO | `floor(8 * 0.5197) = 4` |
-| 83 | `01010 011` | `011` | TODO | TODO | `floor(8 * 0.2968) = 2` |
-| 115 | `01110 011` | `011` | TODO | TODO | `floor(8 * 0.0739) = 0` |
+| 51 | `00110 011` | `011` | `51 % 8 = 3` | `51 % 7 = 2` | `floor(8 * 0.5197) = 4` |
+| 83 | `01010 011` | `011` | `83 % 8 = 3` | `83 % 7 = 6` | `floor(8 * 0.2968) = 2` |
+| 115 | `01110 011` | `011` | `115 % 8 = 3` | `115 % 7 = 3` | `floor(8 * 0.0739) = 0` |
 
 ### 1.2 Implementation
 
@@ -136,6 +136,13 @@ python3 hash_functions_practice.py
 **TODO 1.3:** Look at your `k mod 8` column vs. your `k mod 7` column in
 Table 1.1. Why did all four keys collide into slot `3` when $m = 8$, and why did
 choosing a prime table size ($m = 7$) spread them into different slots?
+
+**Answer 1.3:** With $m = 8 = 2^3$, `k % 8` is just the last 3 bits of `k`.
+All four keys end in `011`, so they all land in slot 3 no matter what their
+higher bits are, and the other 7 slots stay empty. 7 is not a power of 2, so
+`k % 7` cannot be read off a fixed set of bits. Each key's remainder depends on
+its whole value, all of its bits. The keys differ in their upper bits, so they
+get different remainders: 5, 2, 6, and 3, with no collisions.
 
 ---
 
@@ -229,9 +236,11 @@ are worked for you.
 |---|---|---|---|---|---|
 | 1 | `(12, "A")` | `12 % 7 = 5` | `[[12, "A"]]` | 1 | `1/7 ≈ 0.14` |
 | 2 | `(19, "B")` | `19 % 7 = 5` | `[[12, "A"], [19, "B"]]` | 2 | `2/7 ≈ 0.29` |
-| 3 | `(24, "C")` | TODO | TODO | TODO | TODO |
-| 4 | `(26, "D")` | TODO | TODO | TODO | TODO |
-| 5 | `(31, "E")` | TODO | TODO | TODO | TODO |
+| 3 | `(24, "C")` | `24 % 7 = 3` | `[[24, "C"]]` | 3 | `3/7 ≈ 0.43` |
+| 4 | `(26, "D")` | `26 % 7 = 5` | `[[12, "A"], [19, "B"], [26, "D"]]` | 4 | `4/7 ≈ 0.57` |
+| 5 | `(31, "E")` | `31 % 7 = 3` | `[[24, "C"], [31, "E"]]` | 5 | `5/7 ≈ 0.71` |
+
+The load factor stays at or below `0.75`, so no rehash happens during this trace.
 
 ### 2.2 Implementation
 
@@ -254,6 +263,14 @@ $2M = 8$, why do we have to recompute `key % new_capacity` for every key
 (for example, key `14` moves from bucket `14 % 4 = 2` to bucket `14 % 8 = 6`)
 instead of just copying bucket `2` from the old table into bucket `2` of the new
 table?
+
+**Answer 2.3:** A key's bucket is `key % capacity`, so changing the
+capacity changes where each key belongs. Keys that shared bucket 2 when
+$M = 4$ (2, 6, 10, 14, ...) split between buckets 2 and 6 when $M = 8$. If we
+just copied bucket 2 over, key 14 would sit in bucket 2, but `chaining_lookup`
+would compute `14 % 8 = 6` and search bucket 6, so the key would be reported
+missing even though it is in the table. Every key has to be rehashed with the
+new capacity so that inserts and lookups agree on where it lives.
 
 ---
 
@@ -352,11 +369,11 @@ $h(k) = k \bmod 7$). The first two insertions and first lookup are worked.
 |---|---|---|---|---|---|
 | Insert `12` | `12 % 7 = 5` | `5` | 1 | Placed at slot `5` | `[_, _, _, _, _, 12, _]` |
 | Insert `19` | `19 % 7 = 5` | `5 -> 6` | 2 | Placed at slot `6` | `[_, _, _, _, _, 12, 19]` |
-| Insert `26` | `26 % 7 = 5` | TODO | TODO | Placed at slot `0` | `[26, _, _, _, _, 12, 19]` |
-| Insert `3` | `3 % 7 = 3` | TODO | TODO | Placed at slot `3` | `[26, _, _, 3, _, 12, 19]` |
-| Insert `10` | `10 % 7 = 3` | TODO | TODO | Placed at slot `4` | `[26, _, _, 3, 10, 12, 19]` |
+| Insert `26` | `26 % 7 = 5` | `5 -> 6 -> 0` | 3 | Placed at slot `0` | `[26, _, _, _, _, 12, 19]` |
+| Insert `3` | `3 % 7 = 3` | `3` | 1 | Placed at slot `3` | `[26, _, _, 3, _, 12, 19]` |
+| Insert `10` | `10 % 7 = 3` | `3 -> 4` | 2 | Placed at slot `4` | `[26, _, _, 3, 10, 12, 19]` |
 | Lookup `26` | `26 % 7 = 5` | `5 -> 6 -> 0` | 3 | Found `26` at slot `0` | *(unchanged)* |
-| Lookup `33` | `33 % 7 = 5` | TODO | TODO | Not found (hit empty slot `1`) | *(unchanged)* |
+| Lookup `33` | `33 % 7 = 5` | `5 -> 6 -> 0 -> 1` | 4 | Not found (hit empty slot `1`) | *(unchanged)* |
 
 ### 3.2 Implementation
 
@@ -378,6 +395,22 @@ Table 3.1, why can `linear_probe_lookup` stop as soon as it hits empty slot `1`
 without checking slots `2`, `3`, or `4`? Also, why does Open Addressing slow
 down much more drastically than Separate Chaining when the load factor $\alpha$
 approaches `1.0`?
+
+**Answer 3.3:** Inserting 33 would follow the exact same probe path
+(5, 6, 0, 1, ...) and stop at the first empty slot it found. Slot 1 is empty,
+so if 33 had ever been inserted it would be sitting in slot 1 or earlier on the
+path. It could never have been placed in slots 2, 3, or 4 while slot 1 was
+still empty. (This assumes no deletions; deleting would need "tombstone"
+markers so lookups don't stop early.)
+
+Open addressing slows down much more because all keys share one array. Keys
+that collide take the next free slots, which form clusters. Any new key that
+hashes anywhere inside a cluster must walk to its end and then makes it longer
+(primary clustering). Clusters grow and merge, so the expected probes grow like
+$1/(1 - \alpha)$ and blow up as $\alpha \to 1$; at $\alpha = 1$ the table is
+full and inserts fail. In separate chaining, a collision only makes one bucket's
+list longer and doesn't affect other buckets, so the cost grows only linearly,
+as $O(1 + \alpha)$, and $\alpha$ can even go above 1.
 
 ---
 

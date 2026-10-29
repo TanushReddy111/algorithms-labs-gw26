@@ -25,11 +25,11 @@ at different ancestors.
 | `avl_practice.py` | Implement `avl_delete` and complete the rebalancing loop; rotation functions from Lab 4 are provided |
 | `lab_checks.py` | Provided checks and profiling demonstration; do not edit |
 
-- [ ] Part 1: AVL deletion strategy, rebalancing pass conceptual understanding
-- [ ] Part 2: Deletion traces (single rotation, double rotation, multiple rotations)
-- [ ] Part 3: Implement `avl_delete` with post-deletion rebalancing
-- [ ] Part 4: Analyze and compare insertion vs. deletion cost
-- [ ] Run the practice file and resolve all failed checks.
+- [x] Part 1: AVL deletion strategy, rebalancing pass conceptual understanding
+- [x] Part 2: Deletion traces (single rotation, double rotation, multiple rotations)
+- [x] Part 3: Implement `avl_delete` with post-deletion rebalancing
+- [x] Part 4: Analyze and compare insertion vs. deletion cost
+- [x] Run the practice file and resolve all failed checks.
 
 Keep the function names and parameters unchanged. The provided checks inspect
 pointer identities, in-order traversals, parent references, node heights, and
@@ -101,12 +101,40 @@ have a different height, creating imbalances higher up.
 - What happens when the target node has 1 child?
 - What happens when the target node has 2 children, and why is the in-order successor used?
 
+**Answer 1.1:**
+
+- **0 children:** The node is a leaf, so it is simply cut off. Its parent's
+  child pointer is set to `None` (`transplant(tree, z, None)`), or `tree.root`
+  becomes `None` if it was the only node.
+- **1 child:** The node is bypassed. Its single child is moved up into its
+  place and linked to its parent (`transplant(tree, z, child)`).
+- **2 children:** Find the in-order successor `y` (the minimum of `z.right`),
+  splice `y` out of its old spot (if it is not `z.right`), and put `y` where `z`
+  was, taking over `z`'s left and right subtrees. The successor is the next
+  larger key, so it is bigger than everything in `z`'s left subtree and smaller
+  than everything left in `z`'s right subtree. Putting it in `z`'s spot keeps
+  the BST ordering. It also has no left child, so removing it from its old
+  position is always the easy 0- or 1-child case.
+
 ### 1.2 Short answer: Height change after deletion
 
 **TODO 1.2:** When you delete a leaf node from an AVL tree:
 - Does the leaf's parent's height change? By how much?
 - Can the grandparent's height change?
 - Can the imbalance propagate to the root?
+
+**Answer 1.2:**
+
+- The parent's height drops by **1** only if the leaf was its only child (or
+  its taller side). If the parent still has another child of height 0, its
+  height stays the same. It can never change by more than 1.
+- **Yes.** If the parent's height dropped, the grandparent's height can drop
+  too, and a rotation can also shorten a subtree by 1. That change is then seen
+  by the next ancestor up.
+- **Yes.** Each level can pass a height decrease (or a new imbalance) up to its
+  parent, so in the worst case every ancestor up to the root needs a height
+  update or a rotation. That is why deletion rebalances all the way to the
+  root, up to O(log n) rotations.
 
 ---
 
@@ -140,8 +168,19 @@ Start with this AVL tree:
 | Step | Action | Tree state | Unbalanced node | BF | Signature | Rotation | Notes |
 |---|---|---|---|---|---|---|---|
 | 1 | Delete 40 | 40 is removed (leaf) | - | - | - | - | Tree now has 30 root, 20 left, nothing right |
-| 2 | Rebalance from 30 | TODO | TODO | TODO | TODO | TODO | TODO |
-| 3 | After rotation | TODO | TODO | TODO | - | - | Final state |
+| 2 | Rebalance from 30 | 30 with left child 20, 20 with left child 10, right side empty | 30 | +2 (left height 1, right height -1) | LL (BF(20) = +1 >= 0) | `rotate_right(tree, 30)` | 20 rises to the root |
+| 3 | After rotation | 20 root, 10 left, 30 right | none | 0 at 20, 0 at 10 and 30 | - | - | Final state; 20 has no parent, so the loop ends |
+
+**Answer 2.1:** Final tree:
+
+```
+    20
+   /  \
+ 10    30
+```
+
+In-order traversal: `[10, 20, 30]`. A single rotation fixed it, and there is
+nothing above 20 to check.
 
 ### 2.2 Trace: Double rotation after deletion
 
@@ -166,8 +205,23 @@ Start with this AVL tree:
 
 | Step | Action | Current node | BF before | Signature | Rotation applied | BF after |
 |---|---|---|---|---|---|---|
-| 1 | Delete 40 | 30 | TODO | TODO | TODO | TODO |
+| 1 | Delete 40 | 30 | +2 (left height 1, right height -1) | LR (BF(10) = -1, so 10 is right-heavy) | Double: `rotate_left_right(tree, 30)` (`rotate_left(tree, 10)` then `rotate_right(tree, 30)`) | 0 at the new root 20 |
 | 2 | Verify final | - | - | - | - | - |
+
+**Answer 2.2:** Note: in the starting tree 30 actually has BF = +1 (left
+subtree height 1, right subtree height 0), not 0. After deleting 40, BF(30)
+becomes +2. Node 10 is **right-heavy** (BF = -1), so this is **LR** and needs a
+**double** rotation. A single right rotation would just make the tree
+right-heavy instead. First `rotate_left(tree, 10)` lifts 20 above 10, then
+`rotate_right(tree, 30)` lifts 20 to the root. Final tree:
+
+```
+    20
+   /  \
+ 10    30
+```
+
+In-order traversal: `[10, 20, 30]`. All BFs are 0.
 
 ### 2.3 Trace: Two-child deletion with rebalancing
 
@@ -194,8 +248,24 @@ Trace the rebalancing:
 
 | Step | Current node | BF | Imbalanced? | Violation | Rotation applied |
 |---|---|---|---|---|---|
-| 1 | (after replacing 30 with 40) | TODO | TODO | TODO | TODO |
-| 2 | (if needed, continue up) | TODO | TODO | TODO | TODO |
+| 1 | 40 (after replacing 30 with 40) | +2 (left: 20 with height 1, right: empty, height -1) | Yes | LL (BF(20) = +1) | `rotate_right(tree, 40)`, so 20 becomes this subtree's root with children 10 and 40 |
+| 2 | 50 (parent of the rotated subtree) | 0 (left height 1, right height 1) | No | - | None. Root reached, so stop |
+
+**Answer 2.3:** The successor 40 is 30's **immediate** right child, so there is
+nothing to splice. 40 just moves up into 30's spot and takes 20 as its left
+child, and rebalancing starts at 40 itself. Since 40 had no children, the left
+subtree of 50 is now 40 → 20 → 10 (a left chain), which is LL at 40. After
+`rotate_right(tree, 40)`, the tree is:
+
+```
+        50
+       /  \
+      20   70
+     / \     \
+   10  40    80
+```
+
+In-order traversal: `[10, 20, 40, 50, 70, 80]`. Every node has |BF| <= 1.
 
 ---
 
@@ -248,6 +318,24 @@ measuring the number of rotations triggered by each operation.
 2. What property of rotations ensures that insertion stops after one fix?
 3. Does a deletion ever need to rebalance higher than the root? Explain.
 
+**Answer 4.1:**
+
+1. An insertion makes one subtree 1 taller, and the rotation at the lowest
+   unbalanced ancestor brings that subtree back to exactly the height it had
+   before the insert, so nothing above notices any change. A deletion makes a
+   subtree 1 shorter. The rotation that fixes it usually leaves the subtree
+   *still* 1 shorter than before. The only exception is a single rotation
+   where the heavier child had BF 0. That shorter height is passed up and can
+   unbalance the next ancestor, which may need its own rotation, and so on up
+   the path.
+2. After an insertion, the rotation restores the subtree's **original
+   height** (the height from before the insert). Since its height is the same
+   as before, every ancestor's height and balance factor are unchanged, so the
+   loop can stop.
+3. No. The root has no parent, so there is nothing above it to update. The
+   loop stops when `current` becomes `None`. In the worst case it rotates at
+   every level, about O(log n) rotations, but it never goes past the root.
+
 ### 4.2 Short answer: Real-world implications
 
 **TODO 4.2:** Consider a scenario where an application frequently insertions and deletions
@@ -256,6 +344,18 @@ in an AVL tree (e.g., a priority queue or cache).
 1. Based on the rotation cost, would you expect insertions or deletions to be slower?
 2. If deletions become a bottleneck, what alternative data structure (from this course)
    might handle deletions more efficiently?
+
+**Answer 4.2:**
+
+1. Deletions. Each deletion has to walk all the way to the root and may do
+   several rotations, while an insertion does at most one rotation (single or
+   double) and can stop early. Both are still O(log n), but deletion has the
+   bigger constant factor.
+2. A **hash table** (Lab 6) gives O(1) average-time delete (and insert and
+   lookup) when sorted order is not needed, for example in a cache. If the
+   workload is really a priority queue (always remove the min or max), a
+   **binary heap** (Labs 2-3) is a better fit: extract-min is one swap plus
+   one O(log n) sift-down, with no rotations and no pointer rewiring.
 
 ---
 
